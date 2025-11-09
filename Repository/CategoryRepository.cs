@@ -1,5 +1,6 @@
 ﻿using BlazorEcom.Data;
 using BlazorEcom.Repository.IRepository;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorEcom.Repository
 {
@@ -12,16 +13,16 @@ namespace BlazorEcom.Repository
             _db = db;
         }
 
-        public Category Create(Category category)
+        public async Task<Category> CreateAsync(Category category)
         {
-            _db.Category.Add(category);
-            _db.SaveChanges();
+            await _db.Category.AddAsync(category);
+            await _db.SaveChangesAsync();
             return category;
         }
 
-        public bool Delete(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
-            Category? category = _db.Category.Find(id);
+            Category? category = await _db.Category.FirstOrDefaultAsync(c => c.Id == id);
 
             if (category == null)
             {
@@ -29,12 +30,12 @@ namespace BlazorEcom.Repository
             }
 
             _db.Category.Remove(category);
-            return _db.SaveChanges() > 0; 
+            return (await _db.SaveChangesAsync()) > 0; 
         }
 
-        public Category Get(int id)
+        public async Task<Category> GetAsync(int id)
         {
-            Category? category = _db.Category.Find(id);
+            Category? category = await _db.Category.FirstOrDefaultAsync(c => c.Id == id);
             
             if (category == null)
             {
@@ -44,14 +45,14 @@ namespace BlazorEcom.Repository
             return category;
         }
 
-        public IEnumerable<Category> GetAll()
+        public async Task<IEnumerable<Category>> GetAllAsync()
         {
-            return _db.Category.ToList();
+            return await _db.Category.ToListAsync();
         }
 
-        public Category Update(Category category)
+        public async Task<Category> UpdateAsync(Category category)
         {
-            Category? existingCategory = _db.Category.Find(category.Id);
+            Category? existingCategory = await _db.Category.FirstOrDefaultAsync(c => c.Id == category.Id);
 
             if (existingCategory == null)
             {
@@ -60,7 +61,7 @@ namespace BlazorEcom.Repository
 
             existingCategory.Name = category.Name;
             _db.Update(existingCategory);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
             return existingCategory;
         }
     }
