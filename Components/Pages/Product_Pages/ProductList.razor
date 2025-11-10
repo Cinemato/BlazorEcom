@@ -1,0 +1,141 @@
+﻿@page "/product"
+@inject IProductRepository _productRepository
+@inject IJSRuntime _jsRuntime
+@inject IWebHostEnvironment _webHostEnvironment
+@using System.Globalization
+
+<BlazorEcom.Components.Shared.BsModal Title=@($"Are you sure you want to delete the '{DeleteProductName}' product?")
+    ButtonText="Delete"
+    ButtonStyle="btn-danger"
+    OnModalConfirmation="@ConfirmDelete" />
+
+@if (IsProcessing)
+{
+    <div class="position-absolute w-75 h-75 d-flex flex-column align-items-center bg-white justify-content-center">
+        <img src="/images/loading.gif" alt="loading" />
+    </div>
+}
+else
+{
+    <div class="card shadow border-0 mt-4">
+        <div class="card-header bg-black bg-gradient ml-0 py-3">
+            <div class="row">
+                <div class="col text-center">
+                    <h2 class="text-white py-2">Product List</h2>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <div class="row pb-3">
+                <div class="col-12 text-end">
+                    <a href="product/create" class="btn btn-lg btn-secondary" style="width: 250px"><i class="bi bi-plus-square"></i> Add New Product</a>
+                </div>
+            </div>
+            <p>Product List</p>
+            @if (Products.Any())
+            {
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Special Tag</th>
+                            <th>Category</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in Products)
+                        {
+                            <tr>
+                                <td>@product.Name</td>
+                                <td>@product.Price.ToString("C", CultureInfo.GetCultureInfo("en-us"))</td>
+                                <td>@product.SpecialTag</td>
+                                <td>@product.Category.Name</td>
+                                <td>
+                                    <a href="@($"product/update/{product.Id}")" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Edit</a>
+                                    <button class="btn btn-danger" @onclick="() => HandleDelete(product.Id, product.Name)"><i class="bi bi-trash"></i> Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>No products available.</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsProcessing { get; set; } = true;
+    private IEnumerable<Product> Products { get; set; } = new List<Product>();
+    private int DeleteProductId { get; set; } = 0;
+    private string DeleteProductName { get; set; } = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadProducts();
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadProducts()
+    {
+        Products = await _productRepository.GetAllAsync();
+    }
+
+    private void HandleDelete(int id, string name)
+    {
+        DeleteProductId = id;
+        DeleteProductName = name;
+        _jsRuntime.InvokeVoidAsync("ToggleConfirmationModal");
+    }
+
+    private async Task ConfirmDelete(bool isConfirmed)
+    {
+        IsProcessing = true;
+
+        await _jsRuntime.InvokeVoidAsync("ToggleConfirmationModal");
+
+        if (isConfirmed && DeleteProductId != 0 && !string.IsNullOrEmpty(DeleteProductName))
+        {
+            Product product = await _productRepository.GetAsync(DeleteProductId);
+
+            if (product == null)
+            {
+                await _jsRuntime.ToastrError("Product not found.");
+                IsProcessing = false;
+                return;
+            } else
+            {
+                if (product.ImageUrl != null)
+                {
+                    var existingFilePath = Path.Combine(_webHostEnvironment.WebRootPath, product.ImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                    if (File.Exists(existingFilePath))
+                    {
+                        File.Delete(existingFilePath);
+                    }
+                }
+
+                var result = await _productRepository.DeleteAsync(DeleteProductId);
+
+                if (result)
+                    await _jsRuntime.ToastrSuccess("Product deleted succesfully!");
+                else
+                    await _jsRuntime.ToastrError("Error deleting product.");
+
+                await LoadProducts();
+            }
+        }
+
+        DeleteProductId = 0;
+        DeleteProductName = "";
+        IsProcessing = false;
+    }
+}
