@@ -1,14 +1,18 @@
 ﻿@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+    <AuthorizeView Roles="@SD.Role_Admin">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+    </AuthorizeView>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+        @if (isNavBarVisible)
+        {
+            <NavBar />
+        }
 
         <article class="content px-4">
             @Body
@@ -21,3 +25,31 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private bool isNavBarVisible = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isNavBarVisible = await ShowNavBar();
+    }
+
+    private async Task<bool> ShowNavBar()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var isUserAuthenticated = user.Identity != null && user.Identity.IsAuthenticated;
+
+        if (!isUserAuthenticated)
+        {
+            return true;
+        }
+
+        if (!user.IsInRole(SD.Role_Admin))
+        {
+            return true;
+        }
+
+        return false;
+    }
+}

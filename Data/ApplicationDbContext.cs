@@ -9,6 +9,8 @@ namespace BlazorEcom.Data
 
         public DbSet<Product> Product { get; set; }
 
+        public DbSet<ApplicationUser> User { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
